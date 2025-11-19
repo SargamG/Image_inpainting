@@ -9,25 +9,32 @@ class GatedConv2d(nn.Module):
         self.conv_feat = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation=dilation)
         # gating conv (outputs gate map)
         self.conv_mask = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation=dilation)
+        self.bn = nn.BatchNorm2d(out_channels)
         self.activation = nn.ELU()  # can use ReLU or ELU
 
     def forward(self, x):
         feat = self.conv_feat(x)
         gate = self.conv_mask(x)
         gate = torch.sigmoid(gate)
-        out = self.activation(feat) * gate
+        out = self.activation(self.bn(feat)) * gate
         return out
 
 class CNN(nn.Module):
   def _init_(self, ae_ft):
     self.ae_ft = ae_ft
-    self.project1 = nn.Conv2d(259, 256, kernel_size=1, stride=1, padding=0)
-    self.project2 = nn.Conv2d(256, 128, kernel_size=1, stride=1, padding=0)
-    self.project3 = nn.Conv2d(128, 64, kernel_size=1, stride=1, padding=0)
+    self.project1 = nn.Sequential(nn.Conv2d(259, 256, kernel_size=1, stride=1, padding=0),
+                                  nn.BatchNorm2d(256),
+                                  nn.ELU())
+    self.project2 = nn.Sequential(nn.Conv2d(256, 128, kernel_size=1, stride=1, padding=0),
+                                  nn.BatchNorm2d(128),
+                                  nn.ELU())
+    self.project3 = nn.Sequential(nn.Conv2d(128, 64, kernel_size=1, stride=1, padding=0),
+                                  nn.BatchNorm2d(64),
+                                  nn.ELU())
     self.conv1 = GatedConv2d(256, 128, kernel_size=7, stride=1, padding=3)
     self.conv2 = GatedConv2d(128, 64, kernel_size=5, stride=1, padding=2)
     self.conv3 = GatedConv2d(64, 32, kernel_size=3, stride=1, padding=1)
-    self.conv4 = GatedConv2d(32, 3, kernel_size=3, stride=1, padding=1n)
+    self.conv4 = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
   def forward(self, x):
     ae_ft1 = F.interpolate(ae_ft[0], size=x.shape[2:], mode='bilinear', align_corners=False)
