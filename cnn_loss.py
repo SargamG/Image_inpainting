@@ -9,7 +9,7 @@ class PerceptualLoss(nn.Module):
         super().__init__()
 
         self.vgg = vgg_model  # single copy
-        self.vgg.eval()
+        # self.vgg.eval()
 
         # Map VGG layers to indices
         self.layer_map = {
