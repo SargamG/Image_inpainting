@@ -5,12 +5,10 @@ from torchvision import models
 
 
 class PerceptualLoss(nn.Module):
-    def __init__(self, layers=['relu1_2', 'relu2_2', 'relu3_3', 'relu4_3']):
+    def __init__(self, vgg_model, layers=['relu1_2', 'relu2_2', 'relu3_3', 'relu4_3']):
         super().__init__()
 
-        # Load full VGG once
-        vgg_pretrained = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1).features
-        self.vgg = nn.Sequential(*list(vgg_pretrained))  # single copy
+        self.vgg = vgg_model  # single copy
         self.vgg.eval()
 
         # Map VGG layers to indices
@@ -22,10 +20,6 @@ class PerceptualLoss(nn.Module):
         }
 
         self.selected_indices = [self.layer_map[l] for l in layers]
-
-        # Freeze weights to save memory
-        for p in self.vgg.parameters():
-            p.requires_grad = False
 
         # ImageNet normalization
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1,3,1,1))
@@ -63,8 +57,8 @@ class PerceptualLoss(nn.Module):
 
         return total_loss
 
-def cnn_loss(pred, gt, wt=0.2):
+def cnn_loss(pred, gt, vgg_model, wt=0.2):
     l1_loss = F.l1_loss(pred, gt)
-    perceptual_loss = PerceptualLoss()(pred, gt)
+    perceptual_loss = PerceptualLoss(vgg_model)(pred, gt)
     total_loss = l1_loss + wt*perceptual_loss
     return total_loss
