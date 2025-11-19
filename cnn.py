@@ -20,8 +20,7 @@ class GatedConv2d(nn.Module):
         return out
 
 class CNN(nn.Module):
-  def _init_(self, ae_ft):
-    self.ae_ft = ae_ft
+  def _init_(self):
     self.project1 = nn.Sequential(nn.Conv2d(259, 256, kernel_size=1, stride=1, padding=0),
                                   nn.BatchNorm2d(256),
                                   nn.ELU())
@@ -36,7 +35,7 @@ class CNN(nn.Module):
     self.conv3 = GatedConv2d(64, 32, kernel_size=3, stride=1, padding=1)
     self.conv4 = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
-  def forward(self, x):
+  def forward(self, x, ae_ft):
     ae_ft1 = F.interpolate(ae_ft[0], size=x.shape[2:], mode='bilinear', align_corners=False)
     x = torch.cat([x, ae_ft1], dim=1)
     x1 = self.project1(x)
