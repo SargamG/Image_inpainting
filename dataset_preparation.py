@@ -9,11 +9,25 @@ Original file is located at
 
 # %% [code]
 class CelebAMaskedDataset(Dataset):
-    def __init__(self, root_dir, transform=None, mask_ratio=0.2):
+    def __init__(self, root_dir, transform=None, mask_ratio=0.2, split="train", train_ratio=0.8, test_ratio=0.2, seed=42):
+        assert split in ["train", "test"]
+        
         self.root_dir = root_dir
-        self.img_list = os.listdir(root_dir)[:20000]
         self.transform = transform
         self.mask_ratio = mask_ratio
+        
+        img_list = sorted(os.listdir(root_dir))
+
+        np.random.seed(seed)
+        np.random.shuffle(img_list)
+
+        N = len(img_list)
+        train_end = int(N * train_ratio)
+
+        if split == "train":
+            self.img_list = img_list[:train_end]
+        else:
+            self.img_list = img_list[train_end:]
 
     def __len__(self):
         return len(self.img_list)
