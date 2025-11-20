@@ -17,9 +17,10 @@ from PIL import Image
 
 # %% [code]
 class CelebAMaskedDataset(Dataset):
-    def __init__(self, root_dir, transform=None, mask_ratio=0.2, split="train", train_ratio=0.8, test_ratio=0.2, seed=42):
+    def __init__(self, root_dir, transform=None, mask_ratio=0.2, split="train", train_ratio=0.8, test_ratio=0.2, seed=42, device = "cuda"):
         assert split in ["train", "test"]
-        
+
+        self.device = device
         self.root_dir = root_dir
         self.transform = transform
         self.mask_ratio = mask_ratio
@@ -52,8 +53,11 @@ class CelebAMaskedDataset(Dataset):
 
     def generate_mask(self, size, ratio):
         H, W = size
-        mask = np.ones((H, W), dtype=np.float32)
-        num_mask = int(H * W * ratio)
-        idx = np.random.choice(H*W, num_mask, replace=False)
-        mask[np.unravel_index(idx, (H, W))] = 0.0
+        # 1 with probability (1−ratio), 0 with probability ratio
+        mask = (torch.rand(H, W, device=self.device) > ratio).float()
+        # H, W = size
+        # mask = np.ones((H, W), dtype=np.float32)
+        # num_mask = int(H * W * ratio)
+        # idx = np.random.choice(H*W, num_mask, replace=False)
+        # mask[np.unravel_index(idx, (H, W))] = 0.0
         return mask
