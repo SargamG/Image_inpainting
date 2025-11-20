@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+from PIL import Image
 
 # %% [code]
 class CelebAMaskedDataset(Dataset):
