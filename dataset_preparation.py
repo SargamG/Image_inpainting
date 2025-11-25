@@ -53,53 +53,40 @@ class CelebAMaskedDataset(Dataset):
         return masked_image, mask, image
 
 
-    def generate_brush_mask(self, size, ratio, max_strokes=10, device="cpu"):
-        """
-        Generates a free-form irregular mask (brush strokes)
-        covering approximately 'ratio' of the image.
-        
-        size  : (H, W)
-        ratio : mask ratio (0.05 → 5% pixels masked)
-        """
-    
+    def generate_brush_mask(self, size, ratio, max_strokes=10):
         H, W = size
-        mask = torch.zeros((H, W), device=device)
-    
+        mask = torch.zeros((H, W))
+
         total_pixels = H * W
-        target_pixels = int(total_pixels * ratio)  # how many pixels must be masked
-    
-        # Draw strokes until mask covers desired number of pixels
+        target_pixels = int(total_pixels * ratio)
+
         while mask.sum().item() < target_pixels:
-    
+
             num_strokes = random.randint(1, max_strokes)
-    
+
             for _ in range(num_strokes):
-                # Random stroke settings
                 x, y = random.randint(0, W-1), random.randint(0, H-1)
                 length = random.randint(H//10, H//3)
                 angle = random.uniform(0, 2*math.pi)
                 brush_w = random.randint(10, 40)
-    
-                # Draw stroke
+
                 for i in range(length):
                     nx = int(x + i * math.cos(angle))
                     ny = int(y + i * math.sin(angle))
-    
+
                     if 0 <= nx < W and 0 <= ny < H:
                         y1 = max(0, ny - brush_w)
                         y2 = min(H, ny + brush_w)
                         x1 = max(0, nx - brush_w)
                         x2 = min(W, nx + brush_w)
-                        mask[y1:y2, x1:x2] = 1.0  # brushed area
-    
-                    # slightly rotate the brush direction
+                        mask[y1:y2, x1:x2] = 1.0
+
                     angle += random.uniform(-0.2, 0.2)
-    
-                # stop early if target is reached
+
                 if mask.sum().item() >= target_pixels:
                     break
-    
-        return (1 - mask).unsqueeze(0).float()   # 1 for visible, 0 for holes
+
+        return (1 - mask).unsqueeze(0).float()
 
 
     def generate_mask(self, size, ratio):
