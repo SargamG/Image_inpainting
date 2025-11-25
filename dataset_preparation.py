@@ -53,7 +53,7 @@ class CelebAMaskedDataset(Dataset):
         return masked_image, mask, image
 
 
-    def generate_brush_mask(size, ratio, max_strokes=10, device="cpu"):
+    def generate_brush_mask(self, size, ratio, max_strokes=10, device="cpu"):
         """
         Generates a free-form irregular mask (brush strokes)
         covering approximately 'ratio' of the image.
