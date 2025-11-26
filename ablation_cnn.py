@@ -36,7 +36,7 @@ class AblationCNN(nn.Module):
         self.conv3 = GatedConv2d(64, 32, kernel_size=3, stride=1, padding=1)
         self.conv4 = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
-    def forward(self, x, ae_ft):
+    def forward(self, x):
         H, W = x.shape[2], x.shape[3]
         # ae_ft1 = F.interpolate(ae_ft[0], size=(H, W), mode='bilinear', align_corners=False)
         # x = torch.cat([x, ae_ft1], dim=1)
