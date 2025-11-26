@@ -47,7 +47,7 @@ class CelebAMaskedDataset(Dataset):
         image = Image.open(img_path).convert("RGB")
         if self.transform:
             image = self.transform(image)
-        mask = self.generate_brush_mask(image.shape[1:], self.mask_ratio)
+        mask = self.generate_mask(image.shape[1:], self.mask_ratio)
         # mask = torch.from_numpy(mask).float().unsqueeze(0)
         masked_image = image * mask
         return masked_image, mask, image
