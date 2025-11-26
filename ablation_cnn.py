@@ -19,7 +19,7 @@ class GatedConv2d(nn.Module):
         out = self.activation(self.bn(feat)) * gate
         return out
 
-class CNN(nn.Module):
+class AblationCNN(nn.Module):
     def __init__(self):
         super().__init__()
         self.project1 = nn.Sequential(nn.Conv2d(259, 256, kernel_size=1, stride=1, padding=0),
