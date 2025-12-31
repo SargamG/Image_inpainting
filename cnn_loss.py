@@ -61,4 +61,4 @@ def cnn_loss(pred, gt, vgg_model, layers, wt=0.2):
     l1_loss = F.l1_loss(pred, gt)
     perceptual_loss = PerceptualLoss(vgg_model, layers)(pred, gt)
     total_loss = l1_loss + wt*perceptual_loss
-    return total_loss, l1_loss, perceptual_loss
+    return total_loss
