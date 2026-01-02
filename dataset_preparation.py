@@ -99,3 +99,55 @@ class CelebAMaskedDataset(Dataset):
         # idx = np.random.choice(H*W, num_mask, replace=False)
         # mask[np.unravel_index(idx, (H, W))] = 0.0
         return mask
+
+class Places365MaskedDataset(Dataset):
+    def __init__(
+        self,
+        root_dir,
+        list_file,              # path to train.txt or val.txt
+        transform=None,
+        mask_ratio=0.2,
+    ):
+        """
+        root_dir: dataset root (contains train/, val/)
+        list_file: path to train.txt or val.txt
+        """
+        self.root_dir = root_dir
+        self.transform = transform
+        self.mask_ratio = mask_ratio
+
+        # --------------------------------------------------
+        # Load image paths ONCE from txt file
+        # --------------------------------------------------
+        # This is already optimal; Python must read lines once.
+        with open(list_file, "r") as f:
+            self.img_list = f.read().splitlines()
+
+        # Optional sanity check (cheap)
+        assert len(self.img_list) > 0, "Image list is empty"
+
+    def __len__(self):
+        return len(self.img_list)
+
+    def __getitem__(self, idx):
+        # Full path: root_dir + relative path from txt
+        img_path = os.path.join(self.root_dir, self.img_list[idx])
+
+        image = Image.open(img_path).convert("RGB")
+
+        if self.transform:
+            image = self.transform(image)
+
+        mask = self.generate_mask(image.shape[1:], self.mask_ratio)
+        masked_image = image * mask
+
+        return masked_image, mask, image
+
+    # --------------------------------------------------
+    # Mask generation (unchanged)
+    # --------------------------------------------------
+    def generate_mask(self, size, ratio):
+        H, W = size
+        mask = (torch.rand(H, W) > ratio).float().unsqueeze(0)
+        return mask
+
