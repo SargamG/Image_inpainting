@@ -247,3 +247,92 @@ class HorNetInpaint4(nn.Module):
         x = self.block3(x)
         x = self.head(x)
         return x
+
+class HorNetInpaint4_WithLatent(nn.Module):
+    """
+    HorNet-based CNN conditioned on AE latent embedding.
+    """
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        latent_channels: int = 256,   # must match AE latent channels
+        base_channels: int = 32,
+        width_mult: float = 1.0,
+        order: int = 3,
+        kernel_size: int = 7,
+        num_heads: int = 4,
+        ffn_expansion: int = 4,
+    ):
+        super().__init__()
+
+        C = int(round(base_channels * width_mult))
+
+        # -------- Latent fusion --------
+        # After concat(image, latent_up) → project back to 3 channels
+        self.fusion = nn.Sequential(
+            nn.Conv2d(in_channels + latent_channels, in_channels, kernel_size=1, bias=False),
+            nn.GELU()
+        )
+
+        # -------- Stem --------
+        self.stem = nn.Sequential(
+            nn.Conv2d(in_channels, C, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.GELU(),
+        )
+
+        # -------- HorNet blocks --------
+        self.block1 = HorNetStyleBlock(
+            dim=C,
+            order=order,
+            kernel_size=kernel_size,
+            num_heads=num_heads,
+            ffn_expansion=ffn_expansion,
+        )
+        self.block2 = HorNetStyleBlock(
+            dim=C,
+            order=order,
+            kernel_size=kernel_size,
+            num_heads=num_heads,
+            ffn_expansion=ffn_expansion,
+        )
+        self.block3 = HorNetStyleBlock(
+            dim=C,
+            order=order,
+            kernel_size=kernel_size,
+            num_heads=num_heads,
+            ffn_expansion=ffn_expansion,
+        )
+
+        # -------- Output head --------
+        self.head = nn.Conv2d(C, 3, kernel_size=3, padding=1)
+
+    def forward(self, masked_img, latent):
+        """
+        masked_img: (B, 3, H, W)
+        latent:     (B, L, h, w)
+        """
+
+        #1. Upsample latent to image resolution
+        latent_up = F.interpolate(
+            latent,
+            size=masked_img.shape[-2:],
+            mode="bilinear",
+            align_corners=False
+        )
+
+        #2. Concatenate image + latent
+        x = torch.cat([masked_img, latent_up], dim=1)
+
+        #3. Fuse via 1×1 conv
+        x = self.fusion(x)
+
+        #4. HorNet CNN
+        x = self.stem(x)
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.head(x)
+
+        return x
+
