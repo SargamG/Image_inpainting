@@ -126,4 +126,9 @@ class GatedUNet(nn.Module):
         out = self.final_up(out)
         out = self.final_conv(out)
         out = self.out_act(out)
-        return out, latent
+
+        # 🔹 RETURN MULTI-SCALE EMBEDDINGS
+        x1 = skips[0]   # highest resolution
+        x2 = skips[1]   # mid resolution
+
+        return out, latent, x2, x1
