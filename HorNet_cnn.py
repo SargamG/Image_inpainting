@@ -336,3 +336,105 @@ class HorNetInpaint4_WithLatent(nn.Module):
 
         return x
 
+class FusionBlock(nn.Module):
+    def __init__(self, in_cnn, in_ae, out_c):
+        super().__init__()
+        self.fuse = nn.Conv2d(in_cnn + in_ae, out_c, kernel_size=1, bias=True)
+
+    def forward(self, cnn_feat, ae_feat):
+        if ae_feat.shape[-2:] != cnn_feat.shape[-2:]:
+            ae_feat = F.interpolate(ae_feat, size=cnn_feat.shape[-2:], mode='bilinear', align_corners=False)
+        x = torch.cat([cnn_feat, ae_feat], dim=1)
+        return self.fuse(x)
+
+
+class HorNetInpaint4_WithMultiScaleLatent(nn.Module):
+    """
+    HorNet-based CNN conditioned on AE latent embedding.
+    """
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        latent_channels: int = 256,   # must match AE latent channels
+        base_channels: int = 32,
+        width_mult: float = 1.0,
+        order: int = 3,
+        kernel_size: int = 7,
+        num_heads: int = 4,
+        ffn_expansion: int = 4,
+    ):
+        super().__init__()
+
+        C = int(round(base_channels * width_mult))
+        x1_channels = base_ch
+        x2_channels = base_ch * 2
+        
+        # -------- Latent fusion --------
+        # After concat(image, latent_up) → project back to 3 channels
+        self.fusion = nn.Sequential(
+            nn.Conv2d(in_channels + latent_channels, in_channels, kernel_size=1, bias=False),
+            nn.GELU()
+        )
+        self.fuse_z  = FusionBlock(C, latent_ch, C)
+        self.fuse_x2 = FusionBlock(C, x2_channels, C)
+        self.fuse_x1 = FusionBlock(C, x1_channels, C)
+
+
+        # -------- Stem --------
+        self.stem = nn.Sequential(
+            nn.Conv2d(in_channels, C, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.GELU(),
+        )
+
+        # -------- HorNet blocks --------
+        self.block1 = HorNetStyleBlock(
+            dim=C,
+            order=order,
+            kernel_size=kernel_size,
+            num_heads=num_heads,
+            ffn_expansion=ffn_expansion,
+        )
+        self.block2 = HorNetStyleBlock(
+            dim=C,
+            order=order,
+            kernel_size=kernel_size,
+            num_heads=num_heads,
+            ffn_expansion=ffn_expansion,
+        )
+        self.block3 = HorNetStyleBlock(
+            dim=C,
+            order=order,
+            kernel_size=kernel_size,
+            num_heads=num_heads,
+            ffn_expansion=ffn_expansion,
+        )
+
+        # -------- Output head --------
+        self.head = nn.Conv2d(C, 3, kernel_size=3, padding=1)
+
+    def forward(self, x, z, x2, x1):
+        # Stem
+        x = self.stem(x)
+    
+        #1. Fuse final latent embedding (coarse structure)
+        x = self.fuse_z(x, z)
+    
+        # Block 1
+        x = self.block1(x)
+    
+        #2. Fuse mid-level AE features
+        x = self.fuse_x2(x, x2)
+    
+        # Block 2
+        x = self.block2(x)
+    
+        #3. Fuse high-res AE features
+        x = self.fuse_x1(x, x1)
+    
+        # Block 3
+        x = self.block3(x)
+    
+        # Head
+        x = self.head(x)
+        return x
