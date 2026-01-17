@@ -367,8 +367,8 @@ class HorNetInpaint4_WithMultiScaleLatent(nn.Module):
         super().__init__()
 
         C = int(round(base_channels * width_mult))
-        x1_channels = base_ch
-        x2_channels = base_ch * 2
+        x1_channels = base_channels
+        x2_channels = base_channels * 2
         
         # -------- Latent fusion --------
         # After concat(image, latent_up) → project back to 3 channels
@@ -376,7 +376,7 @@ class HorNetInpaint4_WithMultiScaleLatent(nn.Module):
             nn.Conv2d(in_channels + latent_channels, in_channels, kernel_size=1, bias=False),
             nn.GELU()
         )
-        self.fuse_z  = FusionBlock(C, latent_ch, C)
+        self.fuse_z  = FusionBlock(C, latent_channels, C)
         self.fuse_x2 = FusionBlock(C, x2_channels, C)
         self.fuse_x1 = FusionBlock(C, x1_channels, C)
 
