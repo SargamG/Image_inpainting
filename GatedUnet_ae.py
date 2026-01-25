@@ -103,29 +103,29 @@ class GatedUNet(nn.Module):
 
         out = latent
 
-        # # decoder: first block (no upsample) uses last skip
-        # dec0 = self.decs[0]
-        # # concatenate bottleneck + last skip
-        # skip = skips[-1]
-        # if out.shape[-2:] != skip.shape[-2:]:
-        #     out = F.interpolate(out, size=skip.shape[-2:], mode='bilinear', align_corners=False)
-        # out = torch.cat([out, skip], dim=1)
-        # out = dec0["gated"](out)
+        # decoder: first block (no upsample) uses last skip
+        dec0 = self.decs[0]
+        # concatenate bottleneck + last skip
+        skip = skips[-1]
+        if out.shape[-2:] != skip.shape[-2:]:
+            out = F.interpolate(out, size=skip.shape[-2:], mode='bilinear', align_corners=False)
+        out = torch.cat([out, skip], dim=1)
+        out = dec0["gated"](out)
 
-        # # remaining decoder blocks
-        # for i in range(1, len(self.decs)):
-        #     dec = self.decs[i]
-        #     out = dec["up"](out)                     # upsample to next skip size
-        #     skip = skips[-1 - i]                     # corresponding skip
-        #     if out.shape[-2:] != skip.shape[-2:]:
-        #         out = F.interpolate(out, size=skip.shape[-2:], mode='bilinear', align_corners=False)
-        #     out = torch.cat([out, skip], dim=1)
-        #     out = dec["gated"](out)
+        # remaining decoder blocks
+        for i in range(1, len(self.decs)):
+            dec = self.decs[i]
+            out = dec["up"](out)                     # upsample to next skip size
+            skip = skips[-1 - i]                     # corresponding skip
+            if out.shape[-2:] != skip.shape[-2:]:
+                out = F.interpolate(out, size=skip.shape[-2:], mode='bilinear', align_corners=False)
+            out = torch.cat([out, skip], dim=1)
+            out = dec["gated"](out)
 
-        # # final upsample to original resolution
-        # out = self.final_up(out)
-        # out = self.final_conv(out)
-        # out = self.out_act(out)
+        # final upsample to original resolution
+        out = self.final_up(out)
+        out = self.final_conv(out)
+        out = self.out_act(out)
 
         # 🔹 RETURN MULTI-SCALE EMBEDDINGS
         x1 = skips[0]   # highest resolution
