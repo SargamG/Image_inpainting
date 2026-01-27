@@ -25,10 +25,10 @@ class CNN(nn.Module):
         self.project1 = nn.Sequential(nn.Conv2d(259, 256, kernel_size=1, stride=1, padding=0),
                                       nn.BatchNorm2d(256),
                                       nn.ELU())
-        self.project2 = nn.Sequential(nn.Conv2d(256, 128, kernel_size=1, stride=1, padding=0),
+        self.project2 = nn.Sequential(nn.Conv2d(192, 128, kernel_size=1, stride=1, padding=0),
                                       nn.BatchNorm2d(128),
                                       nn.ELU())
-        self.project3 = nn.Sequential(nn.Conv2d(128, 64, kernel_size=1, stride=1, padding=0),
+        self.project3 = nn.Sequential(nn.Conv2d(96, 64, kernel_size=1, stride=1, padding=0),
                                       nn.BatchNorm2d(64),
                                       nn.ELU())
         self.conv1 = GatedConv2d(256, 128, kernel_size=7, stride=1, padding=3)
