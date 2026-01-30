@@ -201,3 +201,102 @@ class GatedEfficientInpaint4(nn.Module):
         x = self.block3(x)   # gated
         x = self.head(x)     # plain conv
         return x
+
+class GatedEfficientInpaint4_WithLatent(nn.Module):
+    """
+    Same as GatedEfficientInpaint4, but:
+      - accepts AE latent embedding
+      - upsamples latent to image resolution
+      - concatenates with image
+      - uses 1x1 conv to project back to 3 channels
+    """
+
+    def __init__(
+        self,
+        in_channels: int = 3,      # RGB image
+        latent_channels: int = 256,
+        base_channels: int = 32,
+        width_mult: float = 1.0,
+        drop_connect_rate: float = 0.1,
+    ):
+        super().__init__()
+
+        # -------------------------------------------------
+        # Latent fusion (NEW)
+        # -------------------------------------------------
+        self.latent_fuse = nn.Conv2d(
+            in_channels + latent_channels,
+            in_channels,
+            kernel_size=1,
+            bias=True
+        )
+
+        # --- compound-style width scaling ---
+        c = int(round(base_channels * width_mult))
+
+        # Stem
+        self.stem = nn.Sequential(
+            nn.Conv2d(in_channels, c, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(c),
+            nn.SiLU(inplace=True),
+        )
+
+        # Stochastic depth schedule
+        dpr = [drop_connect_rate * i / max(1, (3 - 1)) for i in range(3)]
+
+        # Gated MBConv blocks
+        self.block1 = GatedMBConvSE(
+            in_channels=c,
+            expansion=2,
+            kernel_size=3,
+            se_reduction=4,
+            drop_path=dpr[0],
+        )
+        self.block2 = GatedMBConvSE(
+            in_channels=c,
+            expansion=4,
+            kernel_size=5,
+            se_reduction=4,
+            drop_path=dpr[1],
+        )
+        self.block3 = GatedMBConvSE(
+            in_channels=c,
+            expansion=4,
+            kernel_size=5,
+            se_reduction=4,
+            drop_path=dpr[2],
+        )
+
+        # Head
+        self.head = nn.Conv2d(c, 3, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x, latent):
+        """
+        x      : (B, 3, H, W)        masked image
+        latent : (B, C_lat, h, w)   AE latent embedding
+        """
+
+        # -------------------------------------------------
+        # Latent conditioning (NEW)
+        # -------------------------------------------------
+        latent = F.interpolate(
+            latent,
+            size=x.shape[2:],
+            mode="bilinear",
+            align_corners=False
+        )
+
+        x = torch.cat([x, latent], dim=1)   # (B, 3 + C_lat, H, W)
+        x = self.latent_fuse(x)              # (B, 3, H, W)
+
+        # -------------------------------------------------
+        # Original network (UNCHANGED)
+        # -------------------------------------------------
+        x = self.stem(x)
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.head(x)
+
+        return x
+
